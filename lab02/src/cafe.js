@@ -73,7 +73,7 @@ export function orderTotal(order, menu) {
     : (order?.items ?? order?.lines ?? order?.entries ?? []);
 
   return lines.reduce((sum, line) => {
-    const id = line.itemId ?? line.menuItemId ?? line.menuId ?? line.productId ?? line.id;
+    const id = line.menuId ?? line.itemId ?? line.menuItemId ?? line.productId ?? line.id;
     const qty = line.qty ?? line.quantity ?? line.count ?? 1;
     const found = Array.isArray(menu) ? menu.find((entry) => entry.id === id) : undefined;
     const price = found ? found.price : (line.price ?? 0);
@@ -100,30 +100,30 @@ export function averageOrder(orders, menu) {
 
 // Task 9 — return the NAME of the item with the highest total quantity sold.
 export function bestSeller(orders, menu) {
-  if (!orders || orders.length === 0 || !menu || menu.length === 0) {
+  if (!Array.isArray(orders) || orders.length === 0 || !Array.isArray(menu) || menu.length === 0) {
     return null;
   }
 
-  const qtyById = new Map();
-  for (const order of orders) {
-    for (const line of order.items) {
-      const prev = qtyById.get(line.itemId) ?? 0;
-      qtyById.set(line.itemId, prev + line.qty);
-    }
-  }
+  const lines = orders.flatMap((order) =>
+    Array.isArray(order) ? order : (order?.items ?? order?.lines ?? [])
+  );
 
-  let bestName = null;
-  let maxQty = -Infinity;
+  const totalsById = lines.reduce((acc, line) => {
+    const id = line.menuId ?? line.itemId ?? line.menuItemId ?? line.id;
+    const qty = line.qty ?? line.quantity ?? 1;
+    acc[id] = (acc[id] ?? 0) + qty;
+    return acc;
+  }, {});
 
-  for (const item of menu) {
-    const sold = qtyById.get(item.id) ?? 0;
-    if (sold > maxQty) {
-      maxQty = sold;
-      bestName = item.name;
-    }
-  }
+  const best = menu.reduce(
+    (acc, item) => {
+      const sold = totalsById[item.id] ?? 0;
+      return sold > acc.sold ? { name: item.name, sold } : acc;
+    },
+    { name: null, sold: -Infinity }
+  );
 
-  return bestName;
+  return best.name;
 }
 
 // Task 10 — group item names by category:
@@ -137,4 +137,10 @@ export function namesByCategory(menu) {
     groups[category].push(name);
     return groups;
   }, {});
+}
+export function cheapDrinks(menu, maxPrice) {
+  return menu
+    .filter((item) => item.category === "drink" && item.available && item.price <= maxPrice)
+    .toSorted((a, b) => a.price - b.price)
+    .map((item) => menuLine(item));
 }
