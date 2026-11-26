@@ -9,12 +9,15 @@
 // menuNames(menu) → ["Thai Iced Tea", "Americano", ...]
 export function menuNames(menu) {
   // TODO
+  return menu.map((i) => i.name);
 }
 
 // Task 2 — filter
 // Return only the items whose `available` is true.
 export function availableItems(menu) {
   // TODO
+  return menu.filter((i) => i.available)
+  
 }
 
 // Task 3 — find
@@ -22,6 +25,7 @@ export function availableItems(menu) {
 // findItem(menu, "F01") → { id: "F01", name: "Khao Soi", ... }
 export function findItem(menu, id) {
   // TODO
+  return menu.find((i) => i.id === id)
 }
 
 // Task 4 — filter + map
@@ -29,6 +33,10 @@ export function findItem(menu, id) {
 // availableIn(menu, "dessert") → ["Mango Sticky Rice", "Coconut Ice Cream"]
 export function availableIn(menu, category) {
   // TODO
+  return menu
+  .filter((i) => i.category === category)
+  .filter((i) => i.available)
+  .map((i) => i.name);
 }
 
 // Task 5 — template literal + destructuring
@@ -37,7 +45,9 @@ export function availableIn(menu, category) {
 //   "Butterfly Pea Soda — 50 THB (sold out)"     ← when available is false
 // Hint: start with  const { name, price, available } = item;
 export function menuLine(item) {
-  // TODO
+  const { name, price, available } = item;
+  const status = available ? "" : " (sold out)";
+  return `${name} — ${price} THB${status}`;
 }
 
 // Task 6 — spread
@@ -45,33 +55,86 @@ export function menuLine(item) {
 // The original item must not change.
 // withDiscount({ ..., price: 45 }, 10) → { ..., price: 41 }   (45 × 0.9 = 40.5 → 41)
 export function withDiscount(item, percent) {
-  // TODO
+  const discountedPrice = Math.round(item.price * (1 - percent / 100));
+  return {
+    ...item,
+    price: discountedPrice,
+  };
 }
 
 // Task 7 — reduce + find
 // Return the total price of one order in baht.
 // Each line costs  (price of that menu item) × qty.
 // orderTotal(orders[0], menu) → 160   (2 × 45 + 1 × 70)
+// Task 7 — reduce + find
 export function orderTotal(order, menu) {
-  // TODO
+  const lines = Array.isArray(order)
+    ? order
+    : (order?.items ?? order?.lines ?? order?.entries ?? []);
+
+  return lines.reduce((sum, line) => {
+    const id = line.itemId ?? line.menuItemId ?? line.menuId ?? line.productId ?? line.id;
+    const qty = line.qty ?? line.quantity ?? line.count ?? 1;
+    const found = Array.isArray(menu) ? menu.find((entry) => entry.id === id) : undefined;
+    const price = found ? found.price : (line.price ?? 0);
+    return sum + price * qty;
+  }, 0);
 }
 
 // Task 8 — map + reduce   (this is quiz Q10 again!)
 // Return the average order total, rounded to 2 decimal places.
 // Return 0 when there are no orders.
 export function averageOrder(orders, menu) {
-  // TODO
+  if (!orders || orders.length === 0) {
+    return 0;
+  }
+
+  const totals = orders.map((order) => orderTotal(order, menu));
+  const grandTotal = totals.reduce((sum, amount) => sum + amount, 0);
+  const avg = grandTotal / orders.length;
+
+  return Number(avg.toFixed(2));
 }
 
 // ───────────── Stretch (optional) ─────────────
 
 // Task 9 — return the NAME of the item with the highest total quantity sold.
 export function bestSeller(orders, menu) {
-  // TODO
+  if (!orders || orders.length === 0 || !menu || menu.length === 0) {
+    return null;
+  }
+
+  const qtyById = new Map();
+  for (const order of orders) {
+    for (const line of order.items) {
+      const prev = qtyById.get(line.itemId) ?? 0;
+      qtyById.set(line.itemId, prev + line.qty);
+    }
+  }
+
+  let bestName = null;
+  let maxQty = -Infinity;
+
+  for (const item of menu) {
+    const sold = qtyById.get(item.id) ?? 0;
+    if (sold > maxQty) {
+      maxQty = sold;
+      bestName = item.name;
+    }
+  }
+
+  return bestName;
 }
 
 // Task 10 — group item names by category:
 // { drink: ["Thai Iced Tea", ...], food: [...], dessert: [...] }
 export function namesByCategory(menu) {
-  // TODO
+  return menu.reduce((groups, item) => {
+    const { category, name } = item;
+    if (!groups[category]) {
+      groups[category] = [];
+    }
+    groups[category].push(name);
+    return groups;
+  }, {});
 }
